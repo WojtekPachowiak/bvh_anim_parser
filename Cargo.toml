@@ -10,11 +10,10 @@ bevy = {version="0.13.2", features = ["dynamic_linking"]}
 bevy_panorbit_camera = "0.17.0"
 cargo = "0.78.1"
 cgmath = "0.18.0"
+polars = "0.39.2"
 regex = "1.10.4"
 
-# set target target.x86_64-pc-windows-msvc
-[build]
-target = "x86_64-pc-windows-msvc"
+
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

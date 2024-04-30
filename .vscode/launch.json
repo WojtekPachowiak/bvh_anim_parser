@@ -5,12 +5,41 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File",
-            "type": "debugpy",
+            "type": "lldb",
             "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": false
+            "name": "Debug executable 'bvh-anim-parser'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=bvh-anim-parser",
+                    "--package=bvh-anim-parser"
+                ],
+                "filter": {
+                    "name": "bvh-anim-parser",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'bvh-anim-parser'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=bvh-anim-parser",
+                    "--package=bvh-anim-parser"
+                ],
+                "filter": {
+                    "name": "bvh-anim-parser",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

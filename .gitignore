@@ -27,3 +27,7 @@ Cargo.lock
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+bvhio_test
+
+.vscode
