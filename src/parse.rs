@@ -1,6 +1,4 @@
 use crate::types::*;
-use bevy::transform;
-use cgmath::num_traits::one;
 use cgmath::{Decomposed, Deg, InnerSpace, Matrix, Matrix4, One, Rad, Rotation, Rotation3, Transform, Vector3, Zero};
 use regex::Regex;
 use core::panic;
@@ -101,14 +99,14 @@ fn __calc_global_rest_pose(bvh: &BvhMetadata, data: &mut BvhData) {
             z: 0.0,
         };
         let dot = dir.dot(axs);
-        let rest_global_rotation: Quaternion = if dot < -0.9999 {
-            Quaternion::new(0.0, 0.0, 0.0, 1.0)
+        let rest_global_rotation: Quat = if dot < -0.9999 {
+            Quat::new(0.0, 0.0, 0.0, 1.0)
         } else if dot > 0.9999 {
-            Quaternion::new(1.0, 0.0, 0.0, 0.0)
+            Quat::new(1.0, 0.0, 0.0, 0.0)
         } else {
             let angle = (dot).acos();
             let axis = axs.cross(dir).normalize();
-            Quaternion::from_axis_angle(axis, Rad(angle))
+            Quat::from_axis_angle(axis, Rad(angle))
         };
         println!("{}: {:?} {}", joint.name, tail_offset,dot);
         data.rest_global_rotations[joint.index] = rest_global_rotation;
@@ -139,68 +137,9 @@ fn __calc_global_rest_pose(bvh: &BvhMetadata, data: &mut BvhData) {
 /// Calculate the global pose position of a joint. Basically forward kinematics.
 fn __calc_global_pose(bvh: &BvhMetadata, data: &mut BvhData) {
     for joint in bvh.joints.iter() {
-        data.pose_global_positions[joint.index] = vec![Position::default(); bvh.num_frames];
-        data.pose_global_rotations[joint.index] = vec![Quaternion::default(); bvh.num_frames];
+        data.pose_global_positions[joint.index] = vec![Position::identity(); bvh.num_frames];
+        data.pose_global_rotations[joint.index] = vec![Quat::identity(); bvh.num_frames];
         for frame in 0..bvh.num_frames {
-            // cgamth::Decomposed is just like a 4x4 homogenous Matrix, but with a nice constructor accepting scale, rot and disp
-            
-            // let rest_pose_transform = cgmath::Decomposed {
-            //         scale: 1.0,
-            //         rot: data[i],
-            //         disp: data.rest_global_positions[i],
-            //     };
-            // let rest_pose_transform_inv = rest_pose_transform
-            //     .inverse_transform()
-            //     .expect("Error during inverting a matrix. This shouldn't have happened.");
-
-
-            // let pose_transform = cgmath::Decomposed {
-            //     scale: 1.0,
-            //     rot: data.pose_local_rotations[i][frame],
-            //     disp: cgmath::Vector3::zero(),
-            // };
-
-            // let pose_transform_inv = pose_transform
-            //     .inverse_transform()
-            //     .expect("Error during inverting a matrix. This shouldn't have happened.");
-
-
-            // loop {
-            //     if i as ParentIndex == -1 {
-            //         break;
-            //     }
-            //     let rest_pose_transform = cgmath::Decomposed {
-            //         scale: 1.0,
-            //         rot: data.rest_global_rotations[i],
-            //         disp: data.rest_global_positions[i],
-            //     };
-            //     let rest_pose_transform_inv = rest_pose_transform
-            //         .inverse_transform()
-            //         .expect("Error during inverting a matrix. This shouldn't have happened.");
-
-            //     let pose_transform = cgmath::Decomposed {
-            //         scale: 1.0,
-            //         rot: data.pose_local_rotations[i][frame],
-            //         disp: data.rest_local_positions[i],
-            //     };
-
-            //     transform = pose_transform  * transform ;
-            //     i = bvh.joints[i].parent_index as Index;
-            // }
-
-
-            // let mut transform = cgmath::Decomposed::one();
-            // let i = joint.index;
-            
-            // if i == 0 {
-            //     let tr = cgmath::Decomposed {
-            //         scale: 1.0,
-            //         rot: data.rest_local_rotations[i],
-            //         disp: data.rest_local_positions[i],
-            //     };
-
-            //     transform  = tr *  transform;
-            // }
 
             fn recursive_transform(joint_index: Index, frame: usize, metadata:&BvhMetadata, data: &mut BvhData){
                 let i = joint_index;
@@ -232,7 +171,7 @@ fn __calc_global_pose(bvh: &BvhMetadata, data: &mut BvhData) {
                 let parent_transform = if parent_index == -1{
                     Decomposed{
                         scale: 1.0,
-                        rot: Quaternion::one(),
+                        rot: Quat::one(),
                         disp: Vector3::zero(),
                     }
                 } else{ 
@@ -254,89 +193,7 @@ fn __calc_global_pose(bvh: &BvhMetadata, data: &mut BvhData) {
 
             }
 
-            
-            // if joint.index == 1 {
-            //     let tr = cgmath::Decomposed {
-            //         scale: 1.0,
-            //         rot: data.rest_local_rotations[i-1],
-            //         disp: data.rest_local_positions[i-1],
-            //     };
-            //     let tr_rot = Decomposed{
-            //         scale: 1.0,
-            //         rot: data.rest_local_rotations[i-1],
-            //         disp: Vector3::zero(),
-            //     };
-            //     let tr_trans = Decomposed{
-            //         scale: 1.0,
-            //         rot: Quaternion::one(),
-            //         disp: data.rest_local_positions[i-1],
-            //     };
-
-            //     let tr2 = cgmath::Decomposed {
-            //         scale: 1.0,
-            //         rot: data.rest_local_rotations[i],
-            //         disp: data.rest_local_positions[i],
-            //     };
-
-            //     let tr2_rot = Decomposed{
-            //         scale: 1.0,
-            //         rot: data.rest_local_rotations[i],
-            //         disp: Vector3::zero(),
-            //     };
-            //     let tr2_trans = Decomposed{
-            //         scale: 1.0,
-            //         rot: Quaternion::one(),
-            //         disp: data.rest_local_positions[i],
-            //     };
-
-
-            //     transform  = tr2_trans * tr_trans * tr_rot * tr2_rot * transform;
-            // }
-            
-                
-
-            
-
-            // let mut transform = recursive_transform(joint.index,bvh, data);
-
-            
-            // if joint.index == 21 {
-            //     let parent_index = bvh.joints[joint.index].parent_index;
-
-            //     let tr = cgmath::Decomposed {
-            //         scale: 1.0,
-            //         rot: data.rest_local_rotations[parent_index as Index],
-            //         disp: data.rest_local_positions[parent_index as Index],
-            //     };
-            //     let tr_rot = Decomposed{
-            //         scale: 1.0,
-            //         rot: data.rest_local_rotations[parent_index as Index],
-            //         disp: Vector3::zero(),
-            //     };
-            //     let tr_trans = Decomposed{
-            //         scale: 1.0,
-            //         rot: Quaternion::one(),
-            //         disp: data.rest_local_positions[parent_index as Index],
-            //     };
-
-            //     let tr2 = cgmath::Decomposed {
-            //         scale: 1.0,
-            //         rot: data.rest_local_rotations[i],
-            //         disp: data.rest_local_positions[i],
-            //     };
-
-            //     let tr2_rot = Decomposed{
-            //         scale: 1.0,
-            //         rot: data.rest_local_rotations[i],
-            //         disp: Vector3::zero(),
-            //     };
-            //     let tr2_trans = Decomposed{
-            //         scale: 1.0,
-            //         rot: Quaternion::one(),
-            //         disp: data.rest_local_positions[i],
-            //     };
-            //     transform  = tr2_rot; 
-            // }
+         
 
 
             recursive_transform(joint.index,frame,bvh, data);
@@ -346,6 +203,8 @@ fn __calc_global_pose(bvh: &BvhMetadata, data: &mut BvhData) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 fn parse_bvh(file_path: &str) -> (BvhMetadata, BvhData) {
     let file = File::open(file_path).unwrap();
@@ -440,10 +299,10 @@ fn parse_bvh(file_path: &str) -> (BvhMetadata, BvhData) {
                 positional_channels.push(Vec::new());
                 rotational_channels.push(Vec::new());
                 
-                data.rest_local_positions.push(Position::default());
-                data.rest_local_rotations.push(Quaternion::default());
-                data.rest_global_positions.push(Position::default());
-                data.rest_global_rotations.push(Quaternion::default());
+                data.rest_local_positions.push(Position::identity());
+                data.rest_local_rotations.push(Quat::identity());
+                data.rest_global_positions.push(Position::identity());
+                data.rest_global_rotations.push(Quat::identity());
 
                 data.pose_global_positions.push(Vec::new());
                 data.pose_global_rotations.push(Vec::new());
@@ -463,7 +322,7 @@ fn parse_bvh(file_path: &str) -> (BvhMetadata, BvhData) {
             //// Create endsite
             parsing_endsite = true;
             let endsite = Endsite {
-                offset: Position::default(),
+                offset: Position::identity(),
             };
             if let Some(joint) = joints.last_mut() {
                 joint.endsite = Some(endsite);

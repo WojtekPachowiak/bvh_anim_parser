@@ -1,3 +1,12 @@
+# bvh-anim-parser
+[![Latest Version]][crates.io] [![Documentation]][docs.rs] ![License]
+A Rust library for fast parsing of .bvh files. It not only reads and stores the HIERARCHY and MOTION, but additionaly calculates implicit properties such as global joint positions/rotations, both for the pose (MOTION section) and the rest pose (HIERARCHY section). 
+
+
+## Usage
+See `examples/main.rs` for an exhaustive usecase. 
+
+
 
 ## Codebase structure
 There is clear seperation between types/structs and functions which acts on them.
@@ -40,3 +49,12 @@ where T is 3x1 vector representing translation
 
 
 ## How are rest pose joint rotations calculated?
+
+
+# Contributing
+
+# License
+
+## Other repos
+- https://github.com/Wasserwecken/bvhio (Python) - great .bvh parsing library I've used frequently. But it's not as fast as I would like for large dataset processing. 
+- https://github.com/burtonageo/bvh_anim/tree/master (Rust) - highest starred Rust .bvh parser. Seems overengineered and doesn't provide anything that's not already in the HIERARCHY or MOTION section (i.e. doesn't compute rest pose orientations, doesn't do forward kinematics, which allows getting global joint positions/rotations, etc.) 
