@@ -20,14 +20,20 @@ cgmath = "0.18.0"
 # polars = "0.39.2"
 regex = "1.10.4"
 
+
+
 [features]
 visualize=["dep:bevy", "dep:bevy_panorbit_camera"]
 
 
+[[example]]
+name = "example"
+required-features = ["visualize"]
+
 # Enable a small amount of optimization in debug mode
-# [profile.dev]
-# opt-level = 1   
+[profile.dev]
+opt-level = 1   
 
 # Enable high optimizations for dependencies (incl. Bevy), but not for our code:
-# [profile.dev.package."*"]
-# opt-level = 3
+[profile.dev.package."*"]
+opt-level = 3

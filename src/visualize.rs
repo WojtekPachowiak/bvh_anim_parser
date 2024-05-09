@@ -1,12 +1,9 @@
-//! This example demonstrates Bevy's immediate mode drawing API intended for visual debugging.
-
-use std::ops::Rem;
-
-use bevy::render::render_resource::Face;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy::prelude::*;
 use crate::types::*;
-use crate::bvh_parsing::get_kinematic_chains;
+use crate::parse::get_kinematic_chains;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug,Resource)]
 pub struct AppGlobalData {
@@ -21,6 +18,8 @@ pub struct AppGlobalData {
     pub debug_text:bool
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub fn visualize_skeleton(anim_data: BvhData, bvh: BvhMetadata, scale:f32) {
     let kinematic_chain = get_kinematic_chains(&bvh);
 
@@ -33,21 +32,24 @@ pub fn visualize_skeleton(anim_data: BvhData, bvh: BvhMetadata, scale:f32) {
             playing: true,
             frame: 0,
             real_frame: 0.0,
-            scale: 1.0/scale, // reciprocal for historical/laziness reasons xdd
+            scale: 1.0 / scale, // reciprocal for historical/laziness reasons xdd
             debug_text: false
         })
         .add_plugins(DefaultPlugins)
         .add_plugins(PanOrbitCameraPlugin)
         .add_systems(Startup, setup)
         // .add_systems(Update, change_frame)
-        .add_systems(Update, (draw_skeleton, update_main, update_text))
+        .add_systems(Update, (draw_skeleton, update_main, update_debug_text))
         .run();
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // A unit struct to help identify the FPS UI component, since there may be many Text components
 #[derive(Component)]
 struct DebugText;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 fn setup(
     mut commands: Commands,
@@ -62,7 +64,7 @@ fn setup(
         },
         PanOrbitCamera::default(),
     ));
-    // plane
+    // draw plane
     commands.spawn(PbrBundle {
         mesh: meshes.add(Plane3d::default().mesh().size(5.0, 5.0)),
         material: materials.add(StandardMaterial {
@@ -77,7 +79,7 @@ fn setup(
         ..default()
     });
   
-    // instructions
+    // draw instructions
     commands.spawn(
         TextBundle::from_section(
             "Press 'R' to toggle rest pose mode\n\
@@ -99,7 +101,7 @@ fn setup(
         })
     );
 
-    // debug text
+    // draw debug text
     commands.spawn((
         TextBundle::from_section(
             "Debug text",
@@ -124,6 +126,8 @@ fn setup(
     ));
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 /// Draw joint axes (red, green, blue) at the joint position.
 fn draw_joint_axes(gizmos: &mut Gizmos, rotation: &Quaternion, position: &Position,scale:f32) {
@@ -140,6 +144,7 @@ fn draw_joint_axes(gizmos: &mut Gizmos, rotation: &Quaternion, position: &Positi
     let y_axis = Vec3::new(rotation.y.x as f32, rotation.y.y as f32, rotation.y.z as f32)/ scale + position;
     let z_axis = Vec3::new(rotation.z.x as f32, rotation.z.y as f32, rotation.z.z as f32)/ scale + position;
 
+    
     gizmos.line(position, x_axis, Color::RED);
     gizmos.line(position, y_axis, Color::GREEN);
     gizmos.line(position, z_axis, Color::BLUE);
@@ -165,9 +170,10 @@ fn get_global_position_rotation(joint_index: Index, frame: usize, app_data: &App
     return (&global_positions[joint_index][frame], &global_rotations[joint_index][frame])
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 fn draw_skeleton(
     mut gizmos: Gizmos,
-    time: Res<Time>,
     appdata: Res<AppGlobalData>,
 ) {
     let frame = appdata.frame;
@@ -177,8 +183,7 @@ fn draw_skeleton(
     
     //// Draw the skeleton lines
     let kinematic_chain = &appdata.kinematic_chain;
-    let kinematic_chain_length = kinematic_chain.len();
-    for (i,chain) in kinematic_chain.iter().enumerate() {
+    for chain in kinematic_chain.iter() {
         let positions = chain.iter().map(|&joint_index| {
             let (pos,_) = get_global_position_rotation(joint_index, frame, &appdata);
             Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32) /scale
@@ -195,11 +200,14 @@ fn draw_skeleton(
         draw_joint_axes(&mut gizmos, rot, pos,scale);
     }
 
-    ///draw identity axes for reference
-    draw_joint_axes(&mut gizmos, &Quaternion::default(), &Position::default(), 10.0);
+    //// draw identity axes for reference
+    draw_joint_axes(&mut gizmos, &Quaternion::identity(), &Position::identity(), 10.0);
 
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// 
 fn update_main(
     mut config_store: ResMut<GizmoConfigStore>,
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -226,7 +234,7 @@ fn update_main(
     }
 
     if appdata.playing {
-        appdata.real_frame += (time.delta_seconds_f64() * appdata.bvh.fps as f64);
+        appdata.real_frame += time.delta_seconds_f64() * appdata.bvh.fps as f64;
         
     }
 
@@ -251,9 +259,9 @@ fn update_main(
 }
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-fn update_text(
+fn update_debug_text(
     mut query: Query<&mut Text, With<DebugText>>,
     appdata: Res<AppGlobalData>
 ) {

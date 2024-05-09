@@ -16,9 +16,9 @@ Cargo.lock
 *.pdb
 
 .vscode/*
-!.vscode/settings.json
+.vscode/settings.json
 !.vscode/tasks.json
-!.vscode/launch.json
+.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 
@@ -31,3 +31,4 @@ Cargo.lock
 bvhio_test
 
 .vscode
+

@@ -1,11 +1,10 @@
 # bvh-anim-parser
-[![Latest Version]][crates.io] [![Documentation]][docs.rs] ![License]
+[![Latest Version]][crates.io] ![License]
 A Rust library for fast parsing of .bvh files. It not only reads and stores the HIERARCHY and MOTION, but additionaly calculates implicit properties such as global joint positions/rotations, both for the pose (MOTION section) and the rest pose (HIERARCHY section). 
 
 
-## Usage
-See `examples/main.rs` for an exhaustive usecase. 
-
+## Usage/documentation
+See `examples/example.rs` for an exhaustive usecase. This crate offers nothing more than what's presented in that file.
 
 
 ## Codebase structure
@@ -41,7 +40,7 @@ where T is 3x1 vector representing translation
 - modifying and saving .bvh files
 
 ## Assumptions (no warnings/errors will be given if you violate these!):
-1. Only one animation (the legend say you can embed multiple animations into a single .bvh) per .bvh file allowed.
+1. Only one animation (the legend says, you can embed multiple animations into a single .bvh) per .bvh file allowed.
 2. Hips have translational and rotational components (6 channels), while all the other joints only the rotational one (3 channels). 
 3. All rotational components have the same rotation order. For example, if one joint has YZX order while some other has XYZ, then the parser will parse the rotations incorrectly.
 4. The non-ENDSITE joint names must not start with the regex 'end*' (case insensitive) - this pattern is used to recognize ENDSITEs.
@@ -50,11 +49,10 @@ where T is 3x1 vector representing translation
 
 ## How are rest pose joint rotations calculated?
 
-
 # Contributing
+Everyone's welcome. Smash that "New issue" button.
 
-# License
 
 ## Other repos
 - https://github.com/Wasserwecken/bvhio (Python) - great .bvh parsing library I've used frequently. But it's not as fast as I would like for large dataset processing. 
-- https://github.com/burtonageo/bvh_anim/tree/master (Rust) - highest starred Rust .bvh parser. Seems overengineered and doesn't provide anything that's not already in the HIERARCHY or MOTION section (i.e. doesn't compute rest pose orientations, doesn't do forward kinematics, which allows getting global joint positions/rotations, etc.) 
+- https://github.com/burtonageo/bvh_anim/tree/master (Rust) - highest starred Rust .bvh parser. Seems overengineered and doesn't provide anything that's not already in the HIERARCHY or MOTION section (i.e. doesn't compute rest pose orientations, doesn't do forward kinematics, therefore you can't get global joint positions/rotations, etc.) 
