@@ -54,6 +54,7 @@ fn main() {
         assert_eq!(endsite.is_none(), true);
     }
 
+    //////////////////////////////// joint relationships ////////////////
     
     bvh_metadata.joints.iter().for_each(|joint| {
         // if is leaf then has endsite and no children
@@ -84,6 +85,21 @@ fn main() {
         assert_eq!(parent.name, "Neck");
     }
 
+
+    ////////////////////// kinematic chains (great for rendering skeleton as lines) ////////////////
+    {
+        let kinematic_chain = bvh_metadata.get_kinematic_chains();
+        assert_eq!(kinematic_chain, vec![
+            vec![0, 1, 2, 3, 4, 5, 6], // hips to head
+            vec![7, 8, 9, 10, 11], // right arm
+            vec![12, 13], // right thumb
+            vec![14, 15, 16, 17, 18], // left arm
+            vec![19, 20], // left thumb
+            vec![21, 22, 23, 24], // right leg
+            vec![25, 26, 27, 28], //left leg
+        ]);
+    }
+
     //////////////////////////////// methods of BvhData ////////////////
     // some printing utilities
     bvh_data.print_rest_local();
@@ -96,7 +112,7 @@ fn main() {
         let rest_local_rotations: &Vec<cgmath::Quaternion<f64>> = &bvh_data.rest_local_rotations;
         let rest_global_positions: &Vec<cgmath::Vector3<f64>> = &bvh_data.rest_global_positions;
         let rest_global_rotations: &Vec<cgmath::Quaternion<f64>> = &bvh_data.rest_global_rotations;
-    
+        
         // pose data (size: num_frames * num_joints) (aka "keyframe" data) (pose mode in Blender)
         let pose_local_positions: &Vec<Vec<cgmath::Vector3<f64>>> = &bvh_data.pose_local_positions;
         let pose_local_rotations: &Vec<Vec<cgmath::Quaternion<f64>>> = &bvh_data.pose_local_rotations;
@@ -122,6 +138,7 @@ fn main() {
         let cgmath::Quaternion { s, v } = left_shoulder_rest_rot;
         let cgmath::Vector3 { x, y, z } = v;
     }
+    
 
     //////////////////////////////// visualize skeleton ////////////////
     // with "visualize" feature enabled you can visualize the skeleton in a bevy app

@@ -4,16 +4,16 @@ use cgmath::One;
 #[derive(Debug)]
 pub struct BvhData {
     /// This is the same as OFFSET in the HIERARCHY of .bvh file
-    pub rest_local_positions: Vec<Position>,
+    pub rest_local_positions: Vec<Position>, // for root joint it's the same thing as its rest_global_positions
 
-    pub rest_local_rotations: Vec<Quaternion>,
-    pub rest_global_positions: Vec<Position>,
-    pub rest_global_rotations: Vec<Quaternion>,
+    pub rest_local_rotations: Vec<Quaternion>, 
+    pub rest_global_positions: Vec<Position>, 
+    pub rest_global_rotations: Vec<Quaternion>, 
 
-    pub pose_global_positions: Vec<Vec<Position>>,
-    pub pose_global_rotations: Vec<Vec<Quaternion>>,
-    pub pose_local_rotations: Vec<Vec<Quaternion>>,
-    pub pose_local_positions: Vec<Vec<Position>>,
+    pub pose_global_positions: Vec<Vec<Position>>, 
+    pub pose_global_rotations: Vec<Vec<Quaternion>>, 
+    pub pose_local_rotations: Vec<Vec<Quaternion>>, // every joint has it
+    pub pose_local_positions: Vec<Vec<Position>>, // usually root joint has it, but other joints don't (they have (0,0,0) as their Vec<Position>)
 }
 
 impl BvhData {
@@ -99,6 +99,25 @@ impl BvhMetadata {
             .iter()
             .find(|joint| joint.index == index)
             .expect(&format!("Joint with parent index {} not found", index))
+    }
+
+    /// Returns the kinematic chain of a bvh like \[\[0,1,2,3\],\[4,5,6,7,8\],\[9,10,11\],\[12,13,14,15\],\[16,17,18\]\]
+    /// Usually the chains are: left leg, right leg, left arm, right arm and spine+head.
+    pub fn get_kinematic_chains(&self) -> Vec<Vec<Index>> {
+        let mut kinematic_chains: Vec<Vec<Index>> = Vec::new();
+        let mut chain: Vec<Index> = Vec::new();
+        let mut last_depth: isize = -1;
+        for joint in self.joints.iter() {
+            if last_depth != joint.depth as isize - 1 {
+                kinematic_chains.push(chain.clone());
+                chain.clear();
+            }
+            last_depth = joint.depth as isize;
+            chain.push(joint.index);
+        }
+        kinematic_chains.push(chain.clone());
+        
+        return kinematic_chains
     }
 }
 

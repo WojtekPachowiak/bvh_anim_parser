@@ -1,7 +1,6 @@
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy::prelude::*;
 use crate::types::*;
-use crate::parse::get_kinematic_chains;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -20,13 +19,13 @@ pub struct AppGlobalData {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub fn visualize_skeleton(anim_data: BvhData, bvh: BvhMetadata, scale:f32) {
-    let kinematic_chain = get_kinematic_chains(&bvh);
+pub fn visualize_skeleton(data: BvhData, metadata: BvhMetadata, scale:f32) {
+    let kinematic_chain = metadata.get_kinematic_chains();
 
     App::new()
         .insert_resource(AppGlobalData {
-            anim_data,
-            bvh,
+            anim_data: data,
+            bvh: metadata,
             kinematic_chain,
             rest_pose_mode: false,
             playing: true,

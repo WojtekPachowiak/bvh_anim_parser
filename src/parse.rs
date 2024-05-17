@@ -1,13 +1,11 @@
 use crate::types::*;
 use crate::utils;
 use cgmath::{Decomposed, InnerSpace, Rad, Rotation3, Transform, Vector3, Zero};
-use regex::Regex;
 use core::panic;
+use regex::Regex;
 use std::str::Lines;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 
 /// Used during joint creation to fill in its parent index (after parent index has been assigned, this function becomes redundant).
 /// Alogirthm: searches for the joint with depth 1 less than the current joint's depth.
@@ -59,15 +57,15 @@ fn __get_tail_offset(joint: &Joint, offsets: &Vec<Position>) -> Position {
 }
 
 /// Calculate the global rest pose of a joint.
-fn __calc_global_rest_pose(bvh: &BvhMetadata, data: &mut BvhData) {
+fn __calc_rest_pose(bvh: &BvhMetadata, data: &mut BvhData) {
     for joint in bvh.joints.iter() {
         //// CALCULATE REST GLOBAL POSITIONS
-        if joint.parent_index == -1 {
-            data.rest_global_positions[joint.index] = data.rest_local_positions[joint.index];
+        data.rest_global_positions[joint.index] = if joint.parent_index != -1 {
+            data.rest_local_positions[joint.index]
+                + data.rest_global_positions[joint.parent_index as Index]
         } else {
-            data.rest_global_positions[joint.index] =
-                data.rest_local_positions[joint.index] + data.rest_global_positions[joint.parent_index as Index];
-        }
+            data.rest_local_positions[joint.index]
+        };
 
         //// CALCULATE REST GLOBAL ROTATIONS (this quite specific to .bvh files as they don't specify the rest post orientation of joints, so we have to calculate it ourselves)
         // code source: https://github.com/Wasserwecken/bvhio/blob/c91641e3e41ab5e1281b200a754399ae082f95dd/bvhio/lib/bvh/BvhJoint.py#L48
@@ -92,120 +90,88 @@ fn __calc_global_rest_pose(bvh: &BvhMetadata, data: &mut BvhData) {
             let axis = axs.cross(dir).normalize();
             cgmath::Quaternion::from_axis_angle(axis, Rad(angle))
         };
-        println!("{}: {:?} {}", joint.name, tail_offset,dot);
         data.rest_global_rotations[joint.index] = rest_global_rotation;
 
-        // CALCULATE REST LOCAL ROTATIONS
+        //// CALCULATE REST LOCAL ROTATIONS
         data.rest_local_rotations[joint.index] = if joint.parent_index == -1 {
             rest_global_rotation
         } else {
-            let r = 
-            Decomposed{
+            let r = Decomposed {
                 scale: 1.0,
                 rot: data.rest_global_rotations[joint.parent_index as Index],
-                disp: Vector3::zero(),
-            }.inverse_transform().expect("Error during inverting a matrix. This shouldn't have happened.")
-            *
-            Decomposed{
-                scale: 1.0,
-                rot: data.rest_global_rotations[joint.index],
-                disp: Vector3::zero(),
-            
-            };
+                disp: Position::identity(),
+            }
+            .inverse_transform()
+            .expect("Error during inverting a matrix. This shouldn't have happened.")
+                * Decomposed {
+                    scale: 1.0,
+                    rot: data.rest_global_rotations[joint.index],
+                    disp: Position::identity(),
+                };
             r.rot
         };
-        // data.rest_local_rotations[joint.index] = Quaternion::one();
     }
 }
 
 /// Calculate the global pose position of a joint. Basically forward kinematics.
-fn __calc_global_pose(bvh: &BvhMetadata, data: &mut BvhData) {
-    for joint in bvh.joints.iter() {
-        data.pose_global_positions[joint.index] = vec![Position::identity(); bvh.num_frames];
-        data.pose_global_rotations[joint.index] = vec![Quaternion::identity(); bvh.num_frames];
-        for frame in 0..bvh.num_frames {
-
-            fn recursive_transform(joint_index: Index, frame: usize, metadata:&BvhMetadata, data: &mut BvhData){
-                let i = joint_index;
-                let transform = Decomposed{
-                    scale: 1.0,
-                    rot: data.pose_local_rotations[i][frame],
-                    disp: data.pose_local_positions[i][frame],
-                };
-
-                // let rest_transform = Decomposed{
-                //     scale: 1.0,
-                //     rot: data.rest_global_rotations[i],
-                //     disp: data.rest_global_positions[i],
-                // };
-                // let rest_transform_inv = rest_transform
-                //     .inverse_transform()
-                //     .expect("Error during inverting a matrix. This shouldn't have happened.");
-
-                // let tr_rot = Decomposed{
-                //     scale: 1.0,
-                //     rot: data.rest_local_rotations[i],
-                //     disp: Vector3::zero(),
-                // };
-                // let tr_trans = Decomposed{
-                //     scale: 1.0,
-                //     rot: Quaternion::one(),
-                //     disp: data.rest_local_positions[i],
-                // };
-                let parent_index = metadata.joints[i].parent_index;
-
-                let parent_transform = if parent_index == -1{
-                    Decomposed{
-                        scale: 1.0,
-                        rot: Quaternion::identity(),
-                        disp: Position::identity(),
-                    }
-                } else{ 
-                    Decomposed{
-                    scale: 1.0,
-                    rot: data.pose_global_rotations[parent_index as Index][frame],
-                    disp: data.pose_global_positions[parent_index as Index][frame],
-                    }
-                };
-                
-                // if i > 0 {
-                //     data.pose_global_positions[i][frame] = Position::new(0.0,0.0,0.0);
-                //     data.pose_global_rotations[i][frame] = Quaternion::one();
-                // }else{
-                    let transform = parent_transform * transform ;
-                    data.pose_global_positions[i][frame] = transform.disp;
-                    data.pose_global_rotations[i][frame] = transform.rot;
-                // }
-
-            }
-
-         
-
-
-            recursive_transform(joint.index,frame,bvh, data);
-        }
+fn __calc_pose(bvh: &BvhMetadata, data: &mut BvhData) {
+    fn ____recursive_transform(
+        joint_index: Index,
+        frame: usize,
+        metadata: &BvhMetadata,
+        data: &mut BvhData,
+    ) {
+        let i: usize = joint_index;
+        let transform = Decomposed {
+            scale: 1.0,
+            rot: data.pose_local_rotations[i][frame],
+            disp: if i == 0 {
+                data.pose_global_positions[i][frame]
+            } else {
+                data.rest_local_positions[i]
+            },
+        };
         
+        let parent_index = metadata.joints[i].parent_index;
+
+        let parent_transform = if parent_index == -1 {
+            Decomposed {
+                scale: 1.0,
+                rot: Quaternion::identity(),
+                disp: Position::identity(),
+            }
+        } else {
+            Decomposed {
+                scale: 1.0,
+                rot: data.pose_global_rotations[parent_index as Index][frame],
+                disp: data.pose_global_positions[parent_index as Index][frame],
+            }
+        };
+
+        let transform = parent_transform * transform ;
+        data.pose_global_positions[i][frame] = transform.disp;
+        data.pose_global_rotations[i][frame] = transform.rot;
+    }
+
+    for joint in bvh.joints.iter() {
+        for frame in 0..bvh.num_frames {
+            ____recursive_transform(joint.index, frame, bvh, data);
+        }
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
 fn parse_bvh(lines: Lines) -> (BvhMetadata, BvhData) {
-    
-
     let mut rest_local_positions: Vec<Position> = Vec::new();
-    let mut pose_local_positions:  Vec<Vec<Position>> = Vec::new();
-    let mut pose_local_rotations:  Vec<Vec<Quaternion>> = Vec::new();
 
     let mut num_frames = 0;
     let mut frame_time = 0.0;
     let mut fps = 0;
     let mut joints: Vec<Joint> = Vec::new();
-    
+
     let mut rotation_order = String::new();
-    let mut positional_channels: Vec<Vec<Index>> = Vec::new();
+    // let mut positional_channels: Vec<Vec<Index>> = Vec::new();
     let mut rotational_channels: Vec<Vec<Index>> = Vec::new();
 
     let mut parsing_motion = false;
@@ -218,59 +184,14 @@ fn parse_bvh(lines: Lines) -> (BvhMetadata, BvhData) {
     let re_channels = Regex::new(r"CHANNELS (\d) (.+)").unwrap();
 
     //// PARSING LINE BY LINE
-    for line in lines {
+    let mut it = lines.into_iter();
+    loop {
+        let line = it
+            .next()
+            .expect("Error parsing bvh file. Unexpected end of file.");
         let line = line.trim();
 
-        if parsing_motion {
-
-            //// fill in pose_local_positions
-            for _ in 0..positional_channels.len() {
-                pose_local_positions.push(Vec::new());
-            }
-            //// fill in pose_local_rotations
-            for _ in 0..rotational_channels.len() {
-                pose_local_rotations.push(Vec::new());
-            }
-
-            //// Parse motion data (positional_channels and rotational_channels are already fully filled in)
-            let motion_line: Vec<f64> = line
-                .split_whitespace()
-                .map(|s| s.parse::<f64>().expect("Error parsing motion data"))
-                .collect();
-
-            for (joint_index, motion_indices) in positional_channels
-                .iter()
-                .enumerate()
-            {
-                pose_local_positions[joint_index].push(
-                    if motion_indices.len() == 0 {
-                        rest_local_positions[joint_index] // if there are no positional channels, use rest pose position
-                }else{
-                    Position {
-                    x: motion_line[motion_indices[0]],
-                    y: motion_line[motion_indices[1]],
-                    z: motion_line[motion_indices[2]],
-                }
-
-                });
-            }
-            for (joint_index, motion_indices) in rotational_channels.iter().enumerate() {
-                
-                let eul = (
-                    motion_line[motion_indices[0]],
-                    motion_line[motion_indices[1]],
-                    motion_line[motion_indices[2]],
-                );
-                let eul = utils::__reorder_vector(eul.0, eul.1, eul.2, &rotation_order);
-                let quat = utils::__from_euler_to_quat(
-                    eul.0,
-                    eul.1,
-                    eul.2,
-                    &rotation_order,
-                );
-                pose_local_rotations[joint_index].push(quat);
-            }
-        } else if line.starts_with("HIERARCHY") || line.is_empty() {
+        if line.starts_with("HIERARCHY") || line.is_empty() {
             continue;
         } else if line.starts_with("ROOT") || line.starts_with("JOINT") {
             //// Create joint
@@ -290,9 +211,9 @@ fn parse_bvh(lines: Lines) -> (BvhMetadata, BvhData) {
                     endsite: None,
                     depth: depth,
                 };
-                positional_channels.push(Vec::new());
+                // positional_channels.push(Vec::new());
                 rotational_channels.push(Vec::new());
-                
+
                 //// If joint has a parent, add this joint to its parent's children
                 if joint.parent_index != -1 {
                     if let Some(parent) = joints.get_mut(joint.parent_index as Index) {
@@ -367,7 +288,7 @@ fn parse_bvh(lines: Lines) -> (BvhMetadata, BvhData) {
                     for channel_name in channel_names {
                         match channel_name {
                             "Xposition" | "Yposition" | "Zposition" => {
-                                positional_channels[joint.index].push(channels_index);
+                                // positional_channels[joint.index].push(channels_index);
                                 channels_index += 1;
                             }
                             "Xrotation" | "Yrotation" | "Zrotation" => {
@@ -396,17 +317,49 @@ fn parse_bvh(lines: Lines) -> (BvhMetadata, BvhData) {
                 .parse::<f64>()
                 .unwrap();
             fps = (1.0 / frame_time) as u32;
-            parsing_motion = true;
+            break; // jump to parsing Motion
         }
     }
 
     //// initialize fields which will be filled in later
-    let rest_local_rotations:  Vec<Quaternion> = vec![Quaternion::identity(); joints.len()];
-    let rest_global_positions:  Vec<Position> = vec![Position::identity(); joints.len()];
-    let rest_global_rotations:  Vec<Quaternion> = vec![Quaternion::identity(); joints.len()];
-    let pose_global_positions:  Vec<Vec<Position>> = vec![vec![Position::identity(); num_frames]; joints.len()];
-    let pose_global_rotations:  Vec<Vec<Quaternion>> = vec![vec![Quaternion::identity(); num_frames]; joints.len()];
-    
+    let rest_local_rotations: Vec<Quaternion> = vec![Quaternion::identity(); joints.len()];
+    let rest_global_positions: Vec<Position> = vec![Position::identity(); joints.len()];
+    let rest_global_rotations: Vec<Quaternion> = vec![Quaternion::identity(); joints.len()];
+
+    let mut pose_global_positions: Vec<Vec<Position>> =
+        vec![vec![Position::identity(); num_frames]; joints.len()];
+    let pose_global_rotations: Vec<Vec<Quaternion>> =
+        vec![vec![Quaternion::identity(); num_frames]; joints.len()];
+    let pose_local_positions: Vec<Vec<Position>> =
+        vec![vec![Position::identity(); num_frames]; joints.len()];
+    let mut pose_local_rotations: Vec<Vec<Quaternion>> =
+        vec![vec![Quaternion::identity(); num_frames]; joints.len()];
+
+    /////////////////////////////////// PARSING MOTION ///////////////////////////////////
+
+    for (i, line) in it.enumerate() {
+        //// Parse motion data (positional_channels and rotational_channels are already fully filled in)
+        let motion_line: Vec<f64> = line
+            .split_whitespace()
+            .map(|s| s.parse::<f64>().expect("Error parsing motion data"))
+            .collect();
+
+        //// Parse positional channels
+        pose_global_positions[0][i] = Position::new(motion_line[0], motion_line[1], motion_line[2]);
+
+        //// Parse rotational channels
+        for (joint_index, motion_indices) in rotational_channels.iter().enumerate() {
+            let eul = (
+                motion_line[motion_indices[0]],
+                motion_line[motion_indices[1]],
+                motion_line[motion_indices[2]],
+            );
+            let eul = utils::__reorder_vector(eul.0, eul.1, eul.2, &rotation_order);
+            let quat = utils::__from_euler_to_quat(eul.0, eul.1, eul.2, &rotation_order);
+            pose_local_rotations[joint_index][i] = quat;
+        }
+    }
+
     let mut data = BvhData {
         rest_local_positions,
         rest_local_rotations,
@@ -417,7 +370,7 @@ fn parse_bvh(lines: Lines) -> (BvhMetadata, BvhData) {
         pose_global_positions,
         pose_global_rotations,
     };
-    
+
     let metadata = BvhMetadata {
         joints,
         num_frames,
@@ -426,49 +379,27 @@ fn parse_bvh(lines: Lines) -> (BvhMetadata, BvhData) {
     };
 
     //// for each joint fill it's global rest pose and global pose
-    __calc_global_rest_pose(&metadata, &mut data);
-    __calc_global_pose(&metadata, &mut data);
+    __calc_rest_pose(&metadata, &mut data);
+    __calc_pose(&metadata, &mut data);
 
-    return (metadata, data)
+    return (metadata, data);
 }
 
 //////////////////////////////////////////////////////////////// PUBLIC ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
 /// load a bvh file from a file path
 pub fn load_bvh_from_file(file_path: &str) -> (BvhMetadata, BvhData) {
     let contents = std::fs::read_to_string(file_path).expect("Error reading file");
-    return __load_bvh(contents.lines())
+    return __load_bvh(contents.lines());
 }
 
 /// load a bvh file from a string
 pub fn load_bvh_from_string(bvh_string: &str) -> (BvhMetadata, BvhData) {
-    return __load_bvh(bvh_string.lines())
+    return __load_bvh(bvh_string.lines());
 }
 
-fn __load_bvh(lines: Lines) -> (BvhMetadata, BvhData){
+fn __load_bvh(lines: Lines) -> (BvhMetadata, BvhData) {
     //// parse bvh file
     let (metadata, data) = parse_bvh(lines);
-    return (metadata, data)
-}
-
-
-/// Returns the kinematic chain of a bvh like \[\[0,1,2,3\],\[4,5,6,7,8\],\[9,10,11\],\[12,13,14,15\],\[16,17,18\]\]
-/// Usually the chains are: left leg, right leg, left arm, right arm and spine+head.
-pub fn get_kinematic_chains(bvh: &BvhMetadata) -> Vec<Vec<Index>> {
-    let mut kinematic_chains: Vec<Vec<Index>> = Vec::new();
-    let mut chain: Vec<Index> = Vec::new();
-    let mut last_depth: isize = -1;
-    for joint in bvh.joints.iter() {
-        if last_depth != joint.depth as isize - 1 {
-            kinematic_chains.push(chain.clone());
-            chain.clear();
-        }
-        last_depth = joint.depth as isize;
-        chain.push(joint.index);
-    }
-    kinematic_chains.push(chain.clone());
-    
-    return kinematic_chains
+    return (metadata, data);
 }
