@@ -21,7 +21,7 @@ impl BvhData {
         println!("==== REST LOCAL ====");
         for i in 0..self.rest_local_positions.len() {
             println!(
-                "{}: {:<20.2?} {:<20.2?}",
+                "{}: {:<10.2?} {:<10.2?}",
                 i, self.rest_local_positions[i], self.rest_local_rotations[i]
             );
         }
@@ -32,7 +32,7 @@ impl BvhData {
         println!("==== REST GLOBAL ====");
         for i in 0..self.rest_local_positions.len() {
             println!(
-                "{}: {:<20.2?} {:<20.2?}",
+                "{}: {:<10.2?} {:<10.2?}",
                 i, self.rest_global_positions[i], self.rest_global_rotations[i]
             );
         }

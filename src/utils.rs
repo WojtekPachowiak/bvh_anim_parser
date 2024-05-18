@@ -1,4 +1,4 @@
-use crate::types::{BvhMetadata, Joint, Quaternion};
+use crate::types::Quaternion;
 
 
 /// reorder vector based on euler angles order string

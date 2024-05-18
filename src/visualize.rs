@@ -85,7 +85,7 @@ fn setup(
             Press 'D' to toggle debug text\n\
             Press 'Left' or 'Right' to increment frames\n\
             Hold 'Down' or 'Up' to change the line width of straight gizmos\n\
-            Hold 'Up' or 'Down' to change the line width of round gizmos\n",
+            Press 'Space' to play/pause\n",
             TextStyle {
                 font_size: 15.,
                 ..default()

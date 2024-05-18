@@ -1,6 +1,6 @@
 use crate::types::*;
 use crate::utils;
-use cgmath::{Decomposed, InnerSpace, Rad, Rotation3, Transform, Vector3, Zero};
+use cgmath::{Decomposed, InnerSpace, Rad, Rotation3, Transform, Zero};
 use core::panic;
 use regex::Regex;
 use std::str::Lines;
@@ -166,15 +166,14 @@ fn parse_bvh(lines: Lines) -> (BvhMetadata, BvhData) {
     let mut rest_local_positions: Vec<Position> = Vec::new();
 
     let mut num_frames = 0;
-    let mut frame_time = 0.0;
-    let mut fps = 0;
+    let frame_time ;
+    let fps ;
     let mut joints: Vec<Joint> = Vec::new();
 
     let mut rotation_order = String::new();
     // let mut positional_channels: Vec<Vec<Index>> = Vec::new();
     let mut rotational_channels: Vec<Vec<Index>> = Vec::new();
 
-    let mut parsing_motion = false;
     let mut parsing_endsite = false;
     let mut channels_index = 0;
     let mut depth: Depth = 0;
