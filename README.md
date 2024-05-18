@@ -1,4 +1,4 @@
-# bvh_anim_parser 💀
+# Parsing .bvh animation files 💀
 A Rust library for parsing .bvh files. It not only parses the HIERARCHY and MOTION, but additionaly calculates implicit properties such as global joint positions and rotations, both for the pose (MOTION section) and the rest pose (HIERARCHY section). 
 
 
