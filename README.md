@@ -23,8 +23,6 @@ By pressing "R" you can also view the rest pose with its global rest rotations a
 ![rest_pose](./readme_assets/visualize2.png)
 
 ## Codebase structure
-There is clear seperation between types/structs and functions which acts on them.
-
 - `src/types.rs` contains all the custom structs and types.
 - `src/parse.rs` contains all the functions involved in parsing bvh files and getting additional info. from them.
 - `src/visualize.rs` is a `bevy` app for visualizing loaded .bvh files. It's purpose was to help me ensure the bvh parser produces sensible results.
